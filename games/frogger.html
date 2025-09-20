@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>过河青蛙</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(to bottom, #87CEEB 0%, #90EE90 100%);
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        h1 {
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        #gameCanvas {
+            border: 3px solid #2c3e50;
+            background: #1e3c72;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .game-info {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 20px;
+            font-size: 18px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .controls {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        button {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background: #2ecc71;
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            text-align: center;
+            color: #2c3e50;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 500px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐸 过河青蛙</h1>
+    
+    <div class="game-info">
+        <div>分数: <span id="score">0</span></div>
+        <div>生命: <span id="lives">3</span></div>
+        <div>等级: <span id="level">1</span></div>
+        <div>时间: <span id="time">60</span></div>
+    </div>
+    
+    <canvas id="gameCanvas" width="500" height="600"></canvas>
+    
+    <div class="controls">
+        <button onclick="startGame()">开始游戏</button>
+        <button onclick="pauseGame()">暂停</button>
+        <button onclick="resetGame()">重置</button>
+    </div>
+    
+    <div class="instructions">
+        <p>箭头键或WASD控制青蛙移动</p>
+        <p>帮助青蛙安全穿越马路和河流到达对岸</p>
+        <p>避开汽车，跳上木头渡过河流</p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const livesElement = document.getElementById('lives');
+        const levelElement = document.getElementById('level');
+        const timeElement = document.getElementById('time');
+        
+        let gameRunning = false;
+        let gameLoop;
+        let timeLeft = 60;
+        let gameTimer;
+        
+        const TILE_SIZE = 50;
+        const ROWS = canvas.height / TILE_SIZE;
+        const COLS = canvas.width / TILE_SIZE;
+        
+        const game = {
+            score: 0,
+            lives: 3,
+            level: 1,
+            frog: {
+                x: Math.floor(COLS / 2) * TILE_SIZE,
+                y: (ROWS - 1) * TILE_SIZE,
+                width: TILE_SIZE - 10,
+                height: TILE_SIZE - 10,
+                targetY: 0
+            },
+            cars: [],
+            logs: [],
+            lanes: [
+                { type: 'safe', y: 11 * TILE_SIZE, color: '#2ecc71' },    // 终点
+                { type: 'water', y: 10 * TILE_SIZE, color: '#3498db' },   // 水
+                { type: 'water', y: 9 * TILE_SIZE, color: '#3498db' },
+                { type: 'water', y: 8 * TILE_SIZE, color: '#3498db' },
+                { type: 'water', y: 7 * TILE_SIZE, color: '#3498db' },
+                { type: 'water', y: 6 * TILE_SIZE, color: '#3498db' },
+                { type: 'safe', y: 5 * TILE_SIZE, color: '#f39c12' },     // 中间安全区
+                { type: 'road', y: 4 * TILE_SIZE, color: '#34495e' },     // 道路
+                { type: 'road', y: 3 * TILE_SIZE, color: '#34495e' },
+                { type: 'road', y: 2 * TILE_SIZE, color: '#34495e' },
+                { type: 'road', y: 1 * TILE_SIZE, color: '#34495e' },
+                { type: 'road', y: 0 * TILE_SIZE, color: '#34495e' },
+                { type: 'safe', y: -1 * TILE_SIZE, color: '#2ecc71' }     // 起点
+            ]
+        };
+        
+        function initLevel() {
+            game.cars = [];
+            game.logs = [];
+            
+            // 创建汽车
+            for (let i = 0; i < 5; i++) {
+                for (let j = 0; j < 2 + Math.floor(Math.random() * 3); j++) {
+                    game.cars.push({
+                        x: j * 150 + Math.random() * 100,
+                        y: i * TILE_SIZE,
+                        width: 40,
+                        height: 30,
+                        speed: (Math.random() > 0.5 ? 1 : -1) * (1 + Math.random() * 2),
+                        color: ['#e74c3c', '#3498db', '#f1c40f', '#9b59b6'][Math.floor(Math.random() * 4)]
+                    });
+                }
+            }
+            
+            // 创建木头
+            for (let i = 6; i <= 10; i++) {
+                for (let j = 0; j < 1 + Math.floor(Math.random() * 2); j++) {
+                    game.logs.push({
+                        x: j * 200 + Math.random() * 150,
+                        y: i * TILE_SIZE,
+                        width: 80 + Math.random() * 40,
+                        height: 30,
+                        speed: (Math.random() > 0.5 ? 1 : -1) * (0.5 + Math.random() * 1.5)
+                    });
+                }
+            }
+        }
+        
+        function draw() {
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制背景车道
+            game.lanes.forEach(lane => {
+                ctx.fillStyle = lane.color;
+                ctx.fillRect(0, lane.y, canvas.width, TILE_SIZE);
+            });
+            
+            // 绘制汽车
+            game.cars.forEach(car => {
+                ctx.fillStyle = car.color;
+                ctx.fillRect(car.x, car.y + 10, car.width, car.height);
+                
+                // 汽车车轮
+                ctx.fillStyle = '#2c3e50';
+                ctx.beginPath();
+                ctx.arc(car.x + 8, car.y + 35, 5, 0, Math.PI * 2);
+                ctx.arc(car.x + car.width - 8, car.y + 35, 5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            // 绘制木头
+            game.logs.forEach(log => {
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(log.x, log.y + 10, log.width, log.height);
+                
+                // 木头纹理
+                ctx.strokeStyle = '#654321';
+                ctx.lineWidth = 2;
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(log.x, log.y + 15 + i * 7);
+                    ctx.lineTo(log.x + log.width, log.y + 15 + i * 7);
+                    ctx.stroke();
+                }
+            });
+            
+            // 绘制青蛙
+            ctx.fillStyle = '#2ecc71';
+            ctx.fillRect(game.frog.x + 5, game.frog.y + 5, game.frog.width, game.frog.height);
+            
+            // 青蛙眼睛
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(game.frog.x + 15, game.frog.y + 15, 5, 0, Math.PI * 2);
+            ctx.arc(game.frog.x + 35, game.frog.y + 15, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(game.frog.x + 15, game.frog.y + 15, 2, 0, Math.PI * 2);
+            ctx.arc(game.frog.x + 35, game.frog.y + 15, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 绘制游戏信息
+            ctx.fillStyle = '#fff';
+            ctx.font = '16px Arial';
+            ctx.fillText(`目标: 到达对岸`, 10, 25);
+        }
+        
+        function update() {
+            if (!gameRunning) return;
+            
+            // 更新汽车位置
+            game.cars.forEach(car => {
+                car.x += car.speed;
+                
+                // 循环显示
+                if (car.speed > 0 && car.x > canvas.width) {
+                    car.x = -car.width;
+                } else if (car.speed < 0 && car.x < -car.width) {
+                    car.x = canvas.width;
+                }
+            });
+            
+            // 更新木头位置
+            game.logs.forEach(log => {
+                log.x += log.speed;
+                
+                // 循环显示
+                if (log.speed > 0 && log.x > canvas.width) {
+                    log.x = -log.width;
+                } else if (log.speed < 0 && log.x < -log.width) {
+                    log.x = canvas.width;
+                }
+            });
+            
+            // 检查青蛙是否在水中
+            const frogRow = Math.floor((game.frog.y + TILE_SIZE/2) / TILE_SIZE);
+            if (frogRow >= 6 && frogRow <= 10) {
+                let onLog = false;
+                
+                game.logs.forEach(log => {
+                    if (game.frog.x + game.frog.width > log.x &&
+                        game.frog.x < log.x + log.width &&
+                        Math.abs(game.frog.y - log.y) < 30) {
+                        onLog = true;
+                        // 青蛙跟随木头移动
+                        game.frog.x += log.speed;
+                    }
+                });
+                
+                if (!onLog) {
+                    // 青蛙掉入水中
+                    game.lives--;
+                    livesElement.textContent = game.lives;
+                    resetFrogPosition();
+                    
+                    if (game.lives <= 0) {
+                        gameOver();
+                        return;
+                    }
+                }
+            }
+            
+            // 检查与汽车碰撞
+            game.cars.forEach(car => {
+                if (game.frog.x + game.frog.width > car.x &&
+                    game.frog.x < car.x + car.width &&
+                    game.frog.y + game.frog.height > car.y &&
+                    game.frog.y < car.y + car.height) {
+                    
+                    game.lives--;
+                    livesElement.textContent = game.lives;
+                    resetFrogPosition();
+                    
+                    if (game.lives <= 0) {
+                        gameOver();
+                        return;
+                    }
+                }
+            });
+            
+            // 检查是否到达终点
+            if (game.frog.y <= TILE_SIZE) {
+                game.score += 100 + timeLeft;
+                scoreElement.textContent = game.score;
+                nextLevel();
+            }
+            
+            // 防止青蛙超出边界
+            if (game.frog.x < 0) game.frog.x = 0;
+            if (game.frog.x > canvas.width - game.frog.width) {
+                game.frog.x = canvas.width - game.frog.width;
+            }
+        }
+        
+        function resetFrogPosition() {
+            game.frog.x = Math.floor(COLS / 2) * TILE_SIZE;
+            game.frog.y = (ROWS - 1) * TILE_SIZE;
+        }
+        
+        function nextLevel() {
+            game.level++;
+            levelElement.textContent = game.level;
+            
+            resetFrogPosition();
+            initLevel();
+            
+            timeLeft = 60;
+            timeElement.textContent = timeLeft;
+            
+            alert(`恭喜进入第${game.level}关！`);
+        }
+        
+        function updateTimer() {
+            timeLeft--;
+            timeElement.textContent = timeLeft;
+            
+            if (timeLeft <= 0) {
+                game.lives--;
+                livesElement.textContent = game.lives;
+                
+                if (game.lives <= 0) {
+                    gameOver();
+                } else {
+                    timeLeft = 60;
+                    resetFrogPosition();
+                }
+            }
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            clearInterval(gameLoop);
+            clearInterval(gameTimer);
+            alert(`游戏结束！最终得分: ${game.score}，达到第${game.level}关`);
+        }
+        
+        function gameStep() {
+            update();
+            draw();
+        }
+        
+        function startGame() {
+            if (gameRunning) return;
+            gameRunning = true;
+            gameLoop = setInterval(gameStep, 1000 / 60);
+            gameTimer = setInterval(updateTimer, 1000);
+        }
+        
+        function pauseGame() {
+            gameRunning = false;
+            clearInterval(gameLoop);
+            clearInterval(gameTimer);
+        }
+        
+        function resetGame() {
+            gameRunning = false;
+            clearInterval(gameLoop);
+            clearInterval(gameTimer);
+            
+            game.score = 0;
+            game.lives = 3;
+            game.level = 1;
+            timeLeft = 60;
+            
+            scoreElement.textContent = '0';
+            livesElement.textContent = '3';
+            levelElement.textContent = '1';
+            timeElement.textContent = '60';
+            
+            resetFrogPosition();
+            initLevel();
+            draw();
+        }
+        
+        // 键盘事件
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    e.preventDefault();
+                    if (game.frog.y > 0) {
+                        game.frog.y -= TILE_SIZE;
+                        game.score += 10;
+                        scoreElement.textContent = game.score;
+                    }
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    e.preventDefault();
+                    if (game.frog.y < canvas.height - TILE_SIZE) {
+                        game.frog.y += TILE_SIZE;
+                    }
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    e.preventDefault();
+                    if (game.frog.x > 0) {
+                        game.frog.x -= TILE_SIZE;
+                    }
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    e.preventDefault();
+                    if (game.frog.x < canvas.width - TILE_SIZE) {
+                        game.frog.x += TILE_SIZE;
+                    }
+                    break;
+            }
+        });
+        
+        // 初始化
+        initLevel();
+        draw();
+    </script>
+</body>
+</html>

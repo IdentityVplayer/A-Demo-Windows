@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三消游戏</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+            color: #2c3e50;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        h1 {
+            margin-bottom: 20px;
+            color: #e74c3c;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .game-info {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 20px;
+            font-size: 18px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 50px);
+            grid-template-rows: repeat(8, 50px);
+            gap: 2px;
+            background: #34495e;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .gem {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            user-select: none;
+            border: 2px solid transparent;
+        }
+        
+        .gem:hover {
+            transform: scale(1.1);
+            border-color: #f1c40f;
+        }
+        
+        .gem.selected {
+            border-color: #e74c3c;
+            transform: scale(1.15);
+            box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+        }
+        
+        .gem.highlighted {
+            background: #f1c40f !important;
+            animation: flash 0.5s ease-in-out;
+        }
+        
+        @keyframes flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .gem.falling {
+            animation: fall 0.5s ease-in;
+        }
+        
+        @keyframes fall {
+            from { transform: translateY(-100px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .gem-red { background: #e74c3c; }
+        .gem-blue { background: #3498db; }
+        .gem-green { background: #2ecc71; }
+        .gem-yellow { background: #f1c40f; }
+        .gem-purple { background: #9b59b6; }
+        .gem-orange { background: #e67e22; }
+        
+        .controls {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        button {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background: #c0392b;
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            text-align: center;
+            color: #2c3e50;
+            max-width: 500px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>💎 三消游戏</h1>
+    
+    <div class="game-info">
+        <div>分数: <span id="score">0</span></div>
+        <div>等级: <span id="level">1</span></div>
+        <div>目标: <span id="target">1000</span></div>
+        <div>移动: <span id="moves">20</span></div>
+    </div>
+    
+    <div class="game-board" id="gameBoard"></div>
+    
+    <div class="controls">
+        <button onclick="newGame()">新游戏</button>
+        <button onclick="shuffle()">打乱</button>
+        <button onclick="hint()">提示</button>
+    </div>
+    
+    <div class="instructions">
+        <p>点击相邻的宝石交换位置，连成三个或更多相同的宝石即可消除</p>
+        <p>在有限的移动次数内达到目标分数即可过关</p>
+    </div>
+
+    <script>
+        let board = [];
+        let selectedGem = null;
+        let score = 0;
+        let level = 1;
+        let moves = 20;
+        let target = 1000;
+        let gameActive = true;
+        
+        const scoreElement = document.getElementById('score');
+        const levelElement = document.getElementById('level');
+        const targetElement = document.getElementById('target');
+        const movesElement = document.getElementById('moves');
+        const gameBoardElement = document.getElementById('gameBoard');
+        
+        const gemTypes = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+        const gemSymbols = ['🔴', '🔵', '🟢', '🟡', '🟣', '🟠'];
+        
+        function initBoard() {
+            board = [];
+            for (let row = 0; row < 8; row++) {
+                board[row] = [];
+                for (let col = 0; col < 8; col++) {
+                    board[row][col] = getRandomGemType();
+                }
+            }
+            
+            // 确保初始状态没有三消
+            while (hasMatches()) {
+                for (let row = 0; row < 8; row++) {
+                    for (let col = 0; col < 8; col++) {
+                        board[row][col] = getRandomGemType();
+                    }
+                }
+            }
+        }
+        
+        function getRandomGemType() {
+            return Math.floor(Math.random() * gemTypes.length);
+        }
+        
+        function renderBoard() {
+            gameBoardElement.innerHTML = '';
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const gem = document.createElement('div');
+                    gem.className = `gem gem-${gemTypes[board[row][col]]}`;
+                    gem.textContent = gemSymbols[board[row][col]];
+                    gem.dataset.row = row;
+                    gem.dataset.col = col;
+                    
+                    gem.addEventListener('click', () => handleGemClick(row, col));
+                    
+                    gameBoardElement.appendChild(gem);
+                }
+            }
+        }
+        
+        function handleGemClick(row, col) {
+            if (!gameActive) return;
+            
+            const clickedGem = { row, col };
+            
+            if (selectedGem === null) {
+                selectedGem = clickedGem;
+                highlightGem(row, col);
+            } else {
+                if (selectedGem.row === row && selectedGem.col === col) {
+                    // 取消选择
+                    selectedGem = null;
+                    renderBoard();
+                } else if (isAdjacent(selectedGem, clickedGem)) {
+                    // 交换宝石
+                    swapGems(selectedGem, clickedGem);
+                    selectedGem = null;
+                } else {
+                    // 选择新的宝石
+                    selectedGem = clickedGem;
+                    renderBoard();
+                    highlightGem(row, col);
+                }
+            }
+        }
+        
+        function highlightGem(row, col) {
+            const gem = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            gem.classList.add('selected');
+        }
+        
+        function isAdjacent(gem1, gem2) {
+            const rowDiff = Math.abs(gem1.row - gem2.row);
+            const colDiff = Math.abs(gem1.col - gem2.col);
+            return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+        }
+        
+        function swapGems(gem1, gem2) {
+            const temp = board[gem1.row][gem1.col];
+            board[gem1.row][gem1.col] = board[gem2.row][gem2.col];
+            board[gem2.row][gem2.col] = temp;
+            
+            renderBoard();
+            
+            // 检查是否有三消
+            if (hasMatches()) {
+                moves--;
+                movesElement.textContent = moves;
+                processMatches();
+            } else {
+                // 无效移动，恢复
+                const temp = board[gem1.row][gem1.col];
+                board[gem1.row][gem1.col] = board[gem2.row][gem2.col];
+                board[gem2.row][gem2.col] = temp;
+                renderBoard();
+            }
+            
+            checkGameOver();
+        }
+        
+        function hasMatches() {
+            return findMatches().length > 0;
+        }
+        
+        function findMatches() {
+            const matches = [];
+            
+            // 检查横向三消
+            for (let row = 0; row < 8; row++) {
+                let count = 1;
+                let currentType = board[row][0];
+                
+                for (let col = 1; col < 8; col++) {
+                    if (board[row][col] === currentType) {
+                        count++;
+                    } else {
+                        if (count >= 3) {
+                            for (let i = col - count; i < col; i++) {
+                                matches.push({ row, col: i });
+                            }
+                        }
+                        count = 1;
+                        currentType = board[row][col];
+                    }
+                }
+                
+                if (count >= 3) {
+                    for (let i = 8 - count; i < 8; i++) {
+                        matches.push({ row, col: i });
+                    }
+                }
+            }
+            
+            // 检查纵向三消
+            for (let col = 0; col < 8; col++) {
+                let count = 1;
+                let currentType = board[0][col];
+                
+                for (let row = 1; row < 8; row++) {
+                    if (board[row][col] === currentType) {
+                        count++;
+                    } else {
+                        if (count >= 3) {
+                            for (let i = row - count; i < row; i++) {
+                                matches.push({ row: i, col });
+                            }
+                        }
+                        count = 1;
+                        currentType = board[row][col];
+                    }
+                }
+                
+                if (count >= 3) {
+                    for (let i = 8 - count; i < 8; i++) {
+                        matches.push({ row: i, col });
+                    }
+                }
+            }
+            
+            return matches;
+        }
+        
+        function processMatches() {
+            const matches = findMatches();
+            
+            if (matches.length === 0) {
+                return;
+            }
+            
+            // 高亮匹配的宝石
+            matches.forEach(match => {
+                const gem = document.querySelector(`[data-row="${match.row}"][data-col="${match.col}"]`);
+                gem.classList.add('highlighted');
+            });
+            
+            setTimeout(() => {
+                // 计算分数
+                score += matches.length * 10 * level;
+                scoreElement.textContent = score;
+                
+                // 移除匹配的宝石
+                matches.forEach(match => {
+                    board[match.row][match.col] = -1; // 标记为空
+                });
+                
+                // 下落宝石
+                dropGems();
+                
+                // 填充空位
+                fillEmpty();
+                
+                renderBoard();
+                
+                // 递归处理新的三消
+                setTimeout(() => {
+                    processMatches();
+                }, 300);
+                
+            }, 500);
+        }
+        
+        function dropGems() {
+            for (let col = 0; col < 8; col++) {
+                let writePos = 7;
+                for (let row = 7; row >= 0; row--) {
+                    if (board[row][col] !== -1) {
+                        board[writePos][col] = board[row][col];
+                        if (writePos !== row) {
+                            board[row][col] = -1;
+                        }
+                        writePos--;
+                    }
+                }
+            }
+        }
+        
+        function fillEmpty() {
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (board[row][col] === -1) {
+                        board[row][col] = getRandomGemType();
+                    }
+                }
+            }
+        }
+        
+        function checkGameOver() {
+            if (score >= target) {
+                levelUp();
+            } else if (moves <= 0) {
+                gameOver();
+            }
+        }
+        
+        function levelUp() {
+            level++;
+            moves += 15;
+            target = Math.floor(target * 1.5);
+            
+            levelElement.textContent = level;
+            movesElement.textContent = moves;
+            targetElement.textContent = target;
+            
+            alert(`恭喜进入第${level}关！`);
+        }
+        
+        function gameOver() {
+            gameActive = false;
+            alert(`游戏结束！最终得分: ${score}，达到第${level}关`);
+        }
+        
+        function newGame() {
+            score = 0;
+            level = 1;
+            moves = 20;
+            target = 1000;
+            gameActive = true;
+            
+            scoreElement.textContent = score;
+            levelElement.textContent = level;
+            movesElement.textContent = moves;
+            targetElement.textContent = target;
+            
+            initBoard();
+            renderBoard();
+        }
+        
+        function shuffle() {
+            if (moves > 0) {
+                moves--;
+                movesElement.textContent = moves;
+            }
+            
+            initBoard();
+            renderBoard();
+            
+            checkGameOver();
+        }
+        
+        function hint() {
+            // 简单的提示系统：随机高亮一个可能的移动
+            const possibleMoves = [];
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 7; col++) {
+                    // 横向交换
+                    const temp = board[row][col];
+                    board[row][col] = board[row][col + 1];
+                    board[row][col + 1] = temp;
+                    
+                    if (hasMatches()) {
+                        possibleMoves.push({ row, col, direction: 'right' });
+                    }
+                    
+                    // 恢复
+                    board[row][col + 1] = board[row][col];
+                    board[row][col] = temp;
+                }
+            }
+            
+            for (let row = 0; row < 7; row++) {
+                for (let col = 0; col < 8; col++) {
+                    // 纵向交换
+                    const temp = board[row][col];
+                    board[row][col] = board[row + 1][col];
+                    board[row + 1][col] = temp;
+                    
+                    if (hasMatches()) {
+                        possibleMoves.push({ row, col, direction: 'down' });
+                    }
+                    
+                    // 恢复
+                    board[row + 1][col] = board[row][col];
+                    board[row][col] = temp;
+                }
+            }
+            
+            if (possibleMoves.length > 0) {
+                const hint = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                const gem1 = document.querySelector(`[data-row="${hint.row}"][data-col="${hint.col}"]`);
+                gem1.style.border = '3px solid #f1c40f';
+                
+                let gem2;
+                if (hint.direction === 'right') {
+                    gem2 = document.querySelector(`[data-row="${hint.row}"][data-col="${hint.col + 1}"]`);
+                } else {
+                    gem2 = document.querySelector(`[data-row="${hint.row + 1}"][data-col="${hint.col}"]`);
+                }
+                gem2.style.border = '3px solid #f1c40f';
+                
+                setTimeout(() => {
+                    gem1.style.border = '2px solid transparent';
+                    gem2.style.border = '2px solid transparent';
+                }, 2000);
+            } else {
+                alert('没有可用的移动，尝试打乱吧！');
+            }
+        }
+        
+        // 初始化游戏
+        newGame();
+    </script>
+</body>
+</html>

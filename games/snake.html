@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #2c3e50;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        #gameCanvas {
+            border: 2px solid #ecf0f1;
+            background: #34495e;
+        }
+        
+        .controls {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .score {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            text-align: center;
+            color: #bdc3c7;
+        }
+        
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="score">分数: <span id="score">0</span></div>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <div class="controls">
+        <button onclick="startGame()">开始游戏</button>
+        <button onclick="pauseGame()">暂停</button>
+        <button onclick="resetGame()">重新开始</button>
+    </div>
+    <div class="instructions">
+        <p>使用箭头键或WASD控制蛇的方向</p>
+        <p>吃红色食物来获得分数，但不要撞到自己！</p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+        
+        let snake = [{x: 10, y: 10}];
+        let food = {x: 15, y: 15};
+        let dx = 0;
+        let dy = 0;
+        let score = 0;
+        let gameRunning = false;
+        let gameLoop;
+        
+        function drawGame() {
+            // 清空画布
+            ctx.fillStyle = '#34495e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制蛇
+            ctx.fillStyle = '#2ecc71';
+            snake.forEach((segment, index) => {
+                if (index === 0) {
+                    ctx.fillStyle = '#27ae60'; // 蛇头颜色深一些
+                } else {
+                    ctx.fillStyle = '#2ecc71';
+                }
+                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize - 2, gridSize - 2);
+            });
+            
+            // 绘制食物
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
+        }
+        
+        function updateGame() {
+            if (!gameRunning) return;
+            
+            const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+            
+            // 检查撞墙
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                gameOver();
+                return;
+            }
+            
+            // 检查是否撞到自己
+            if (snake.some(segment => segment.x === head.x && segment.y === head.y)) {
+                gameOver();
+                return;
+            }
+            
+            snake.unshift(head);
+            
+            // 检查是否吃到食物
+            if (head.x === food.x && head.y === food.y) {
+                score += 10;
+                scoreElement.textContent = score;
+                generateFood();
+            } else {
+                snake.pop();
+            }
+        }
+        
+        function generateFood() {
+            food = {
+                x: Math.floor(Math.random() * tileCount),
+                y: Math.floor(Math.random() * tileCount)
+            };
+            
+            // 确保食物不在蛇身上
+            if (snake.some(segment => segment.x === food.x && segment.y === food.y)) {
+                generateFood();
+            }
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            clearInterval(gameLoop);
+            alert(`游戏结束！你的分数是: ${score}`);
+        }
+        
+        function startGame() {
+            if (gameRunning) return;
+            gameRunning = true;
+            gameLoop = setInterval(() => {
+                updateGame();
+                drawGame();
+            }, 150);
+        }
+        
+        function pauseGame() {
+            gameRunning = false;
+            clearInterval(gameLoop);
+        }
+        
+        function resetGame() {
+            gameRunning = false;
+            clearInterval(gameLoop);
+            snake = [{x: 10, y: 10}];
+            dx = 0;
+            dy = 0;
+            score = 0;
+            scoreElement.textContent = score;
+            generateFood();
+            drawGame();
+        }
+        
+        // 键盘控制
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    if (dy !== 1) { dx = 0; dy = -1; }
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    if (dy !== -1) { dx = 0; dy = 1; }
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    if (dx !== 1) { dx = -1; dy = 0; }
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    if (dx !== -1) { dx = 1; dy = 0; }
+                    break;
+            }
+        });
+        
+        // 初始化游戏
+        generateFood();
+        drawGame();
+    </script>
+</body>
+</html>

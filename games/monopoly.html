@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大富翁</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f1c40f 0%, #2c3e50 100%);
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        h1 {
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .game-container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 500px;
+            margin: 20px 0;
+        }
+        
+        .game-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        
+        .game-info {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin: 20px 0;
+            font-size: 18px;
+        }
+        
+        .controls {
+            margin: 20px 0;
+        }
+        
+        button {
+            background: #f1c40f;
+            color: #2c3e50;
+            border: none;
+            padding: 12px 24px;
+            margin: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .play-area {
+            width: 400px;
+            height: 300px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px auto;
+            font-size: 1.2rem;
+        }
+        
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏠 大富翁</h1>
+    
+    <div class="game-container">
+        <div class="game-icon">🏠</div>
+        
+        <div class="game-info">
+            <div>资产: <span id="score">1000</span></div>
+            <div>回合: <span id="level">1</span></div>
+        </div>
+        
+        <div class="play-area" id="playArea">
+            点击开始游戏按钮开始游戏
+        </div>
+        
+        <div class="controls">
+            <button onclick="startGame()">开始游戏</button>
+            <button onclick="rollDice()">掷骰子</button>
+            <button onclick="resetGame()">重置</button>
+        </div>
+        
+        <div class="instructions">
+            <p>经典大富翁游戏，买地盖房赚取财富</p>
+            <p>掷骰子移动，购买土地获得租金收入</p>
+        </div>
+    </div>
+
+    <script>
+        let gameRunning = false;
+        let money = 1000;
+        let round = 1;
+        let position = 0;
+        
+        const scoreElement = document.getElementById('score');
+        const levelElement = document.getElementById('level');
+        const playAreaElement = document.getElementById('playArea');
+        
+        function startGame() {
+            gameRunning = true;
+            money = 1000;
+            round = 1;
+            position = 0;
+            
+            updateDisplay();
+            playAreaElement.textContent = '游戏开始！点击掷骰子开始移动';
+        }
+        
+        function rollDice() {
+            if (!gameRunning) return;
+            
+            const dice = Math.floor(Math.random() * 6) + 1;
+            position = (position + dice) % 20;
+            
+            const event = getLocationEvent(position);
+            money += event.money;
+            
+            if (money <= 0) {
+                gameOver();
+                return;
+            }
+            
+            round++;
+            updateDisplay();
+            playAreaElement.textContent = `骰子：${dice}，${event.message}`;
+        }
+        
+        function getLocationEvent(pos) {
+            const events = [
+                { message: '起点，获得200金币！', money: 200 },
+                { message: '购买土地，花费100金币', money: -100 },
+                { message: '机会卡，获得50金币', money: 50 },
+                { message: '购买房屋，花费150金币', money: -150 },
+                { message: '税收，缴纳50金币', money: -50 },
+                { message: '车站，收过路费30金币', money: 30 },
+                { message: '购买商店，花费120金币', money: -120 },
+                { message: '意外收获，获得80金币', money: 80 },
+                { message: '购买酒店，花费200金币', money: -200 },
+                { message: '租金收入，获得100金币', money: 100 },
+                { message: '监狱参观，无事发生', money: 0 },
+                { message: '购买工厂，花费180金币', money: -180 },
+                { message: '股票分红，获得60金币', money: 60 },
+                { message: '购买银行，花费250金币', money: -250 },
+                { message: '慈善捐款，支出30金币', money: -30 },
+                { message: '机场收费，获得40金币', money: 40 },
+                { message: '购买医院，花费160金币', money: -160 },
+                { message: '彩票中奖，获得90金币', money: 90 },
+                { message: '购买学校，花费140金币', money: -140 },
+                { message: '奖金发放，获得120金币', money: 120 }
+            ];
+            
+            return events[pos] || { message: '路过', money: 0 };
+        }
+        
+        function resetGame() {
+            gameRunning = false;
+            money = 1000;
+            round = 1;
+            position = 0;
+            
+            updateDisplay();
+            playAreaElement.textContent = '点击开始游戏按钮开始游戏';
+        }
+        
+        function updateDisplay() {
+            scoreElement.textContent = money;
+            levelElement.textContent = round;
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            alert(`游戏结束！你破产了！坚持了${round}回合`);
+            resetGame();
+        }
+        
+        // 键盘事件
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+            
+            if (e.key === ' ') {
+                e.preventDefault();
+                rollDice();
+            }
+        });
+    </script>
+</body>
+</html>
