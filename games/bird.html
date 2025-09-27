@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Flappy Bird 简易版</title>
+    <style>
+        body { background: #70c5ce; margin: 0; overflow: hidden; }
+        canvas { display: block; margin: 0 auto; background: #70c5ce; }
+        .score { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: #fff; font-size: 2em; font-family: Arial, sans-serif; text-shadow: 2px 2px 4px #333; }
+    </style>
+</head>
+<body>
+    <div class="score" id="score">0</div>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const GRAVITY = 0.5;
+    const FLAP = -8;
+    let bird = { x: 60, y: 300, w: 34, h: 24, velocity: 0 };
+    let pipes = [];
+    let frame = 0;
+    let score = 0;
+    let gameOver = false;
+
+    function drawBird() {
+        ctx.fillStyle = '#FFD700';
+        ctx.beginPath();
+        ctx.ellipse(bird.x, bird.y, bird.w/2, bird.h/2, 0, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = '#333';
+        ctx.stroke();
+    }
+
+    function drawPipes() {
+        ctx.fillStyle = '#228B22';
+        pipes.forEach(pipe => {
+            ctx.fillRect(pipe.x, 0, pipe.w, pipe.top);
+            ctx.fillRect(pipe.x, pipe.bottom, pipe.w, canvas.height - pipe.bottom);
+        });
+    }
+
+    function drawGround() {
+        ctx.fillStyle = '#DEB887';
+        ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
+    }
+
+    function resetGame() {
+        bird.y = 300;
+        bird.velocity = 0;
+        pipes = [];
+        frame = 0;
+        score = 0;
+        gameOver = false;
+        document.getElementById('score').textContent = score;
+    }
+
+    function update() {
+        if (gameOver) return;
+        frame++;
+        bird.velocity += GRAVITY;
+        bird.y += bird.velocity;
+
+        if (frame % 90 === 0) {
+            let gap = 140;
+            let top = Math.random() * (canvas.height - gap - 120) + 40;
+            pipes.push({
+                x: canvas.width,
+                w: 52,
+                top: top,
+                bottom: top + gap,
+                passed: false
+            });
+        }
+
+        pipes.forEach(pipe => {
+            pipe.x -= 2;
+        });
+        // 移除离开屏幕的管道
+        if (pipes.length && pipes[0].x + pipes[0].w < 0) pipes.shift();
+
+        // 碰撞检测
+        pipes.forEach(pipe => {
+            if (
+                bird.x + bird.w/2 > pipe.x &&
+                bird.x - bird.w/2 < pipe.x + pipe.w &&
+                (bird.y - bird.h/2 < pipe.top || bird.y + bird.h/2 > pipe.bottom)
+            ) {
+                gameOver = true;
+            }
+            if (!pipe.passed && pipe.x + pipe.w < bird.x) {
+                score++;
+                pipe.passed = true;
+                document.getElementById('score').textContent = score;
+            }
+        });
+        // 地面碰撞
+        if (bird.y + bird.h/2 > canvas.height - 40) {
+            gameOver = true;
+        }
+        // 顶部碰撞
+        if (bird.y - bird.h/2 < 0) {
+            bird.y = bird.h/2;
+            bird.velocity = 0;
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawGround();
+        drawPipes();
+        drawBird();
+        if (gameOver) {
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 36px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('游戏结束', canvas.width/2, canvas.height/2 - 20);
+            ctx.font = '24px Arial';
+            ctx.fillText('按空格键重新开始', canvas.width/2, canvas.height/2 + 30);
+        }
+    }
+
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.code === 'Space') {
+            if (gameOver) {
+                resetGame();
+            } else {
+                bird.velocity = FLAP;
+            }
+        }
+    });
+
+    loop();
+    </script>
+</body>
+</html>
