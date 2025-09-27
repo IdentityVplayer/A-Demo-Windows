@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>扫雷 Minesweeper</title>
+    <style>
+        body { background: #e0e0e0; margin: 0; }
+        .board { display: grid; grid-template-columns: repeat(9, 32px); grid-gap: 2px; margin: 40px auto; width: 310px; }
+        .cell { width: 32px; height: 32px; background: #bdbdbd; border-radius: 4px; font-size: 1.1em; color: #333; display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; }
+        .cell.open { background: #fff; cursor: default; }
+        .cell.mine { background: #e53935; color: #fff; }
+        .status { text-align: center; font-size: 1.2em; margin-top: 10px; color: #333; }
+    </style>
+</head>
+<body>
+    <div class="status" id="status">点击格子开始游戏</div>
+    <div class="board" id="board"></div>
+    <script>
+    const boardDiv = document.getElementById('board');
+    const statusDiv = document.getElementById('status');
+    const size = 9, mines = 10;
+    let board = [], revealed = [], flagged = [], mineSet = false, gameOver = false;
+    function init() {
+        board = Array(size*size).fill(0);
+        revealed = Array(size*size).fill(false);
+        flagged = Array(size*size).fill(false);
+        mineSet = false;
+        gameOver = false;
+        render();
+        statusDiv.textContent = '点击格子开始游戏';
+    }
+    function setMines(first) {
+        let placed = 0;
+        while (placed < mines) {
+            let idx = Math.floor(Math.random()*size*size);
+            if (board[idx] === 9 || idx === first) continue;
+            board[idx] = 9; placed++;
+        }
+        for (let i=0;i<size*size;i++) if (board[i]!==9) {
+            let n=0; for (let d of [-1,1,-size,size,-size-1,-size+1,size-1,size+1]) {
+                let ni=i+d; if (ni<0||ni>=size*size) continue;
+                if (Math.abs((i%size)-(ni%size))>1) continue;
+                if (board[ni]===9) n++;
+            } board[i]=n;
+        }
+    }
+    function open(idx) {
+        if (revealed[idx]||flagged[idx]||gameOver) return;
+        if (!mineSet) { setMines(idx); mineSet=true; }
+        revealed[idx]=true;
+        if (board[idx]===9) { gameOver=true; statusDiv.textContent='游戏结束'; render(); return; }
+        if (board[idx]===0) for (let d of [-1,1,-size,size,-size-1,-size+1,size-1,size+1]) {
+            let ni=idx+d; if (ni<0||ni>=size*size) continue;
+            if (Math.abs((idx%size)-(ni%size))>1) continue;
+            open(ni);
+        }
+        render();
+        if (revealed.filter(Boolean).length===size*size-mines) { gameOver=true; statusDiv.textContent='胜利！'; }
+    }
+    function flag(idx,e) {
+        e.preventDefault(); if (revealed[idx]||gameOver) return;
+        flagged[idx]=!flagged[idx]; render();
+    }
+    function render() {
+        boardDiv.innerHTML='';
+        for (let i=0;i<size*size;i++) {
+            let div=document.createElement('div');
+            div.className='cell'+(revealed[i]?' open':'')+(revealed[i]&&board[i]===9?' mine':'');
+            div.textContent=revealed[i]?(board[i]===9?'💣':(board[i]||'')):(flagged[i]?'🚩':'');
+            div.onclick=()=>open(i);
+            div.oncontextmenu=(e)=>flag(i,e);
+            boardDiv.appendChild(div);
+        }
+    }
+    init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>打砖块 Breakout</title>
+    <style>
+        body { background: #222; margin: 0; }
+        canvas { display: block; margin: 40px auto; background: #fff; border-radius: 8px; }
+        .score { text-align: center; color: #fff; font-size: 1.5em; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="score" id="score">得分: 0</div>
+    <canvas id="gameCanvas" width="480" height="320"></canvas>
+    <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    let ball = {x:240,y:160,dx:2,dy:-2,r:8};
+    let paddle = {x:200,w:80,h:12};
+    let bricks = [], rows=5, cols=8, brickW=54, brickH=18, brickP=8;
+    let score=0, right=false, left=false, gameOver=false;
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) bricks.push({x:c*(brickW+brickP)+20,y:r*(brickH+brickP)+30,hit:false});
+    document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')right=true;if(e.key==='ArrowLeft')left=true;});
+    document.addEventListener('keyup',e=>{if(e.key==='ArrowRight')right=false;if(e.key==='ArrowLeft')left=false;});
+    function draw() {
+        ctx.clearRect(0,0,480,320);
+        ctx.fillStyle='#2196f3';ctx.fillRect(paddle.x,308,paddle.w,paddle.h);
+        ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fillStyle='#e91e63';ctx.fill();ctx.closePath();
+        for(let b of bricks) if(!b.hit) {ctx.fillStyle='#ffc107';ctx.fillRect(b.x,b.y,brickW,brickH);}
+        ctx.fillStyle='#333';ctx.font='16px Arial';ctx.fillText('得分: '+score,10,20);
+    }
+    function update() {
+        if(gameOver)return;
+        if(right&&paddle.x<400)paddle.x+=5;
+        if(left&&paddle.x>0)paddle.x-=5;
+        ball.x+=ball.dx;ball.y+=ball.dy;
+        if(ball.x<ball.r||ball.x>480-ball.r)ball.dx=-ball.dx;
+        if(ball.y<ball.r)ball.dy=-ball.dy;
+        if(ball.x>paddle.x&&ball.x<paddle.x+paddle.w&&ball.y+ball.r>308)ball.dy=-ball.dy;
+        for(let b of bricks)if(!b.hit&&ball.x>b.x&&ball.x<b.x+brickW&&ball.y-ball.r<b.y+brickH&&ball.y+ball.r>b.y){b.hit=true;ball.dy=-ball.dy;score+=10;}
+        if(ball.y>320){gameOver=true;document.getElementById('score').textContent='游戏结束，得分: '+score;}
+        if(bricks.every(b=>b.hit)){gameOver=true;document.getElementById('score').textContent='胜利，得分: '+score;}
+    }
+    function loop(){update();draw();if(!gameOver)requestAnimationFrame(loop);}
+    loop();
+    </script>
+</body>
+</html>

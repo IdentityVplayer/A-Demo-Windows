@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>俄罗斯方块 Tetris</title>
+    <style>
+        body { background: #222; margin: 0; }
+        canvas { display: block; margin: 40px auto; background: #fff; border-radius: 8px; }
+        .score { text-align: center; color: #fff; font-size: 1.5em; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="score" id="score">得分: 0</div>
+    <canvas id="gameCanvas" width="200" height="400"></canvas>
+    <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const ROW = 20, COL = 10, SIZE = 20;
+    let board = Array.from({length:ROW},()=>Array(COL).fill(0));
+    const COLORS = [null,'#f44336','#2196f3','#ffeb3b','#4caf50','#9c27b0','#ff9800','#00bcd4'];
+    const SHAPES = [
+        [[1,1,1,1]],
+        [[2,2],[2,2]],
+        [[0,3,0],[3,3,3]],
+        [[0,4,4],[4,4,0]],
+        [[5,5,0],[0,5,5]],
+        [[0,6,6],[6,6,0]],
+        [[7,7,7],[0,7,0]]
+    ];
+    let cur, curX, curY, score=0, gameOver=false;
+    function newPiece() {
+        let id = Math.floor(Math.random()*SHAPES.length);
+        cur = SHAPES[id].map(r=>r.slice());
+        curX = 3; curY = 0;
+        if (collide(cur,curX,curY)) gameOver=true;
+    }
+    function collide(shape,x,y) {
+        for(let r=0;r<shape.length;r++) for(let c=0;c<shape[0].length;c++)
+            if(shape[r][c]&&((board[y+r]&&board[y+r][x+c])||x+c<0||x+c>=COL||y+r>=ROW)) return true;
+        return false;
+    }
+    function merge() {
+        for(let r=0;r<cur.length;r++) for(let c=0;c<cur[0].length;c++)
+            if(cur[r][c]) board[curY+r][curX+c]=cur[r][c];
+    }
+    function rotate() {
+        let t=cur[0].map((_,i)=>cur.map(r=>r[i])).reverse();
+        if(!collide(t,curX,curY)) cur=t;
+    }
+    function drop() {
+        if(!collide(cur,curX,curY+1)) curY++;
+        else { merge(); clear(); newPiece(); }
+    }
+    function clear() {
+        for(let r=ROW-1;r>=0;r--) if(board[r].every(x=>x)) { board.splice(r,1); board.unshift(Array(COL).fill(0)); score+=10; r++; }
+    }
+    function draw() {
+        ctx.clearRect(0,0,200,400);
+        for(let r=0;r<ROW;r++) for(let c=0;c<COL;c++) {
+            if(board[r][c]) { ctx.fillStyle=COLORS[board[r][c]]; ctx.fillRect(c*SIZE,r*SIZE,SIZE-2,SIZE-2); }
+        }
+        for(let r=0;r<cur.length;r++) for(let c=0;c<cur[0].length;c++)
+            if(cur[r][c]) { ctx.fillStyle=COLORS[cur[r][c]]; ctx.fillRect((curX+c)*SIZE,(curY+r)*SIZE,SIZE-2,SIZE-2); }
+        document.getElementById('score').textContent = '得分: '+score+(gameOver?'（游戏结束）':'');
+    }
+    document.addEventListener('keydown',e=>{
+        if(gameOver)return;
+        if(e.key==='ArrowLeft'&&!collide(cur,curX-1,curY))curX--;
+        else if(e.key==='ArrowRight'&&!collide(cur,curX+1,curY))curX++;
+        else if(e.key==='ArrowDown')drop();
+        else if(e.key==='ArrowUp')rotate();
+        draw();
+    });
+    function loop(){if(!gameOver){drop();draw();setTimeout(loop,400);}else draw();}
+    newPiece();draw();loop();
+    </script>
+</body>
+</html>

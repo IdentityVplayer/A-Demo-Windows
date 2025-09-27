@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>Typing Test</title>
+<style>body{font-family:Arial;margin:40px;background:#f5f5f5}#box{max-width:600px;margin:0 auto;background:#fff;padding:20px;border-radius:8px}#text{font-size:1.2em;margin-bottom:12px}#input{width:100%;padding:8px;font-size:1.1em}</style>
+</head>
+<body>
+<div id='box'><div id='text'>The quick brown fox jumps over the lazy dog.</div><input id='input' placeholder='开始输入...'><div id='result'></div></div>
+<script>const txt=document.getElementById('text').textContent;const input=document.getElementById('input'),res=document.getElementById('result');let start=null;input.addEventListener('input',e=>{if(!start)start=Date.now();if(input.value===txt){let secs=(Date.now()-start)/1000;res.textContent='完成，用时: '+secs.toFixed(2)+'s';}});</script>
+</body>
+</html>

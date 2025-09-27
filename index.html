@@ -3,11 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <title>游戏首页</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            background: linear-gradient(120deg, #89f7fe 0%, #66a6ff 100%);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            background: rgba(255,255,255,0.95);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            padding: 32px 24px 40px 24px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 24px;
+            letter-spacing: 2px;
+        }
+        .game-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 18px;
+            padding: 0;
+            list-style: none;
+        }
+        .game-list li {
+            background: #f0f7ff;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(102,166,255,0.08);
+            transition: transform 0.15s, box-shadow 0.15s;
+            text-align: center;
+            padding: 18px 8px;
+        }
+        .game-list li:hover {
+            transform: translateY(-4px) scale(1.04);
+            box-shadow: 0 6px 18px rgba(102,166,255,0.18);
+        }
+        .game-list a {
+            color: #1976d2;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+        .game-list a:hover {
+            color: #ff9800;
+        }
+        @media (max-width: 600px) {
+            .container { padding: 12px 2vw 24px 2vw; }
+            h1 { font-size: 1.5em; }
+        }
+    </style>
 </head>
 <body>
-    <h1>欢迎来到 10000 款游戏网站！</h1>
-    <ul>
-        <li><a href="games/bird.html">Bird Game</a></li>
-    </ul>
+    <div class="container">
+        <h1>欢迎来到 10000 款游戏网站！</h1>
+        <ul class="game-list" id="gameList">
+            <li><a href="#" data-game="games/bird.html">Flappy Bird</a></li>
+            <li><a href="#" data-game="games/snake.html">贪吃蛇 Snake</a></li>
+            <li><a href="#" data-game="games/tictactoe.html">井字棋 Tic Tac Toe</a></li>
+            <li><a href="#" data-game="games/2048.html">2048</a></li>
+            <li><a href="#" data-game="games/minesweeper.html">扫雷 Minesweeper</a></li>
+            <li><a href="#" data-game="games/breakout.html">打砖块 Breakout</a></li>
+            <li><a href="#" data-game="games/tetris.html">俄罗斯方块 Tetris</a></li>
+            <li><a href="#" data-game="games/puzzle.html">拼图 Puzzle</a></li>
+            <li><a href="#" data-game="games/gomoku.html">五子棋 Gomoku</a></li>
+            <li><a href="#" data-game="games/memory.html">记忆翻牌 Memory</a></li>
+            <li><a href="#" data-game="games/whac_a_mole.html">打地鼠 Whac-A-Mole</a></li>
+            <li><a href="#" data-game="games/pong.html">Pong</a></li>
+            <li><a href="#" data-game="games/pong2.html">Pong AI</a></li>
+            <li><a href="#" data-game="games/pingpong.html">Ping Pong</a></li>
+            <li><a href="#" data-game="games/pong3.html">Pong Simple</a></li>
+            <li><a href="#" data-game="games/typing.html">Typing Test</a></li>
+            <li><a href="#" data-game="games/quiz.html">Quiz</a></li>
+            <li><a href="#" data-game="games/typing2.html">Typing Mini</a></li>
+            <li><a href="#" data-game="games/maze.html">Maze</a></li>
+            <li><a href="#" data-game="games/soccer.html">Penalty Kick</a></li>
+            <li><a href="#" data-game="games/quiz2.html">Quick Quiz</a></li>
+        </ul>
+        <div id="gameModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+            <div style="position:relative;width:90vw;max-width:480px;height:80vh;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.25);display:flex;flex-direction:column;">
+                <button id="closeModal" style="position:absolute;top:8px;right:12px;font-size:1.5em;background:none;border:none;cursor:pointer;color:#333;z-index:2;">×</button>
+                <iframe id="gameFrame" src="" style="flex:1;border:none;border-radius:0 0 12px 12px;width:100%;height:100%;"></iframe>
+            </div>
+        </div>
+    </div>
+    <script>
+    // 游戏入口点击嵌入iframe弹窗
+    document.querySelectorAll('.game-list a').forEach(a => {
+        a.addEventListener('click', function(e) {
+            e.preventDefault();
+            const url = this.getAttribute('data-game');
+            if (url) {
+                document.getElementById('gameFrame').src = url;
+                document.getElementById('gameModal').style.display = 'flex';
+            }
+        });
+    });
+    document.getElementById('closeModal').onclick = function() {
+        document.getElementById('gameModal').style.display = 'none';
+        document.getElementById('gameFrame').src = '';
+    };
+    document.getElementById('gameModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.style.display = 'none';
+            document.getElementById('gameFrame').src = '';
+        }
+    });
+    // 后续将自动插入更多游戏入口
+    </script>
 </body>
 </html>
